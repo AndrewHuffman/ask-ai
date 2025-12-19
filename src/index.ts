@@ -185,6 +185,7 @@ _llm-cli() {
       subcommands=(
         'completion:Generate zsh completion script'
         'config:Manage configuration'
+        'mcp:Manage MCP servers'
       )
       _describe -t subcommands 'subcommand' subcommands
       _message 'query'
@@ -199,6 +200,19 @@ _llm-cli() {
             'show:Show current configuration'
           )
           _describe -t config_cmds 'config command' config_cmds
+          ;;
+        mcp)
+          local -a mcp_cmds
+          mcp_cmds=(
+            'add:Add an MCP server'
+            'add-json:Add an MCP server from JSON configuration'
+            'add-preset:Add a preset MCP server'
+            'presets:List available preset MCP servers'
+            'list:List all configured MCP servers'
+            'get:Show details for a specific MCP server'
+            'remove:Remove an MCP server'
+          )
+          _describe -t mcp_cmds 'mcp command' mcp_cmds
           ;;
       esac
       ;;
@@ -255,6 +269,359 @@ _llm-cli "$@"
           console.log(`    - ${name}`);
         }
       }
+    });
+
+  // MCP command group
+  const mcpCmd = program
+    .command('mcp')
+    .description('Manage MCP (Model Context Protocol) servers');
+
+  // Preset MCP servers
+  const mcpPresets: Record<string, { description: string; config: { command: string; args?: string[]; env?: Record<string, string> } | { type: 'http' | 'sse'; url: string } }> = {
+    'filesystem': {
+      description: 'File system access (read/write files, list directories)',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', process.env.HOME || '/'] }
+    },
+    'brave-search': {
+      description: 'Web search via Brave Search API (requires BRAVE_API_KEY)',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-brave-search'] }
+    },
+    'fetch': {
+      description: 'Fetch and convert web content to markdown (requires uvx/uv)',
+      config: { command: 'uvx', args: ['mcp-server-fetch'] }
+    },
+    'deepwiki': {
+      description: 'Access documentation and wikis for GitHub repositories',
+      config: { type: 'sse', url: 'https://mcp.deepwiki.com/sse' }
+    },
+    'github': {
+      description: 'GitHub API access (requires GITHUB_TOKEN)',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] }
+    },
+    'memory': {
+      description: 'Persistent memory using a local knowledge graph',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] }
+    },
+    'puppeteer': {
+      description: 'Browser automation and web scraping',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] }
+    },
+    'slack': {
+      description: 'Slack workspace access (requires SLACK_BOT_TOKEN, SLACK_TEAM_ID)',
+      config: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'] }
+    },
+  };
+
+  mcpCmd
+    .command('presets')
+    .description('List available preset MCP servers')
+    .action(() => {
+      console.log(chalk.bold('Available MCP server presets:\n'));
+      for (const [name, preset] of Object.entries(mcpPresets)) {
+        const cfg = preset.config;
+        const transportType = 'type' in cfg ? cfg.type : 'stdio';
+        console.log(`  ${chalk.cyan(name)} ${chalk.gray(`(${transportType})`)}`);
+        console.log(`    ${preset.description}`);
+        console.log();
+      }
+      console.log(chalk.gray('Add a preset with: llm-cli mcp add-preset <name>'));
+    });
+
+  mcpCmd
+    .command('add-preset <name>')
+    .description('Add a preset MCP server')
+    .option('-e, --env <key=value...>', 'Environment variables for the server')
+    .option('--path <path>', 'Root path for filesystem server (default: home directory)')
+    .action(async (name: string, options: any) => {
+      const preset = mcpPresets[name];
+      if (!preset) {
+        console.error(chalk.red(`Error: Unknown preset "${name}"`));
+        console.log(chalk.gray('\nAvailable presets:'));
+        for (const presetName of Object.keys(mcpPresets)) {
+          console.log(chalk.gray(`  - ${presetName}`));
+        }
+        process.exit(1);
+      }
+
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      config.mcpServers = config.mcpServers || {};
+
+      if ('type' in preset.config) {
+        // Remote server (http/sse)
+        config.mcpServers[name] = {
+          command: `__${preset.config.type}__`,
+          args: [preset.config.url],
+        };
+        await configManager.setConfig(config);
+        console.log(chalk.green(`✓ Added MCP server "${name}" (${preset.config.type})`));
+        console.log(chalk.gray(`  ${preset.description}`));
+        console.log(chalk.gray(`  URL: ${preset.config.url}`));
+      } else {
+        // Local stdio server
+        const serverConfig: { command: string; args?: string[]; env?: Record<string, string> } = {
+          command: preset.config.command,
+          args: [...(preset.config.args || [])],
+        };
+
+        // Handle filesystem path option
+        if (name === 'filesystem' && options.path) {
+          serverConfig.args = ['-y', '@modelcontextprotocol/server-filesystem', options.path];
+        }
+
+        // Parse env vars from options
+        if (options.env) {
+          serverConfig.env = {};
+          for (const envPair of options.env) {
+            const [key, ...valueParts] = envPair.split('=');
+            if (key && valueParts.length > 0) {
+              serverConfig.env[key] = valueParts.join('=');
+            }
+          }
+        }
+
+        config.mcpServers[name] = serverConfig;
+        await configManager.setConfig(config);
+        console.log(chalk.green(`✓ Added MCP server "${name}" (stdio)`));
+        console.log(chalk.gray(`  ${preset.description}`));
+        console.log(chalk.gray(`  Command: ${serverConfig.command} ${serverConfig.args?.join(' ') || ''}`));
+        
+        // Show hints for servers that need env vars
+        if (name === 'brave-search') {
+          console.log(chalk.yellow('\n⚠ Note: Requires BRAVE_API_KEY environment variable'));
+          console.log(chalk.gray('  Get an API key at: https://brave.com/search/api/'));
+          console.log(chalk.gray('  Then run: llm-cli mcp remove brave-search'));
+          console.log(chalk.gray('           llm-cli mcp add-preset brave-search -e BRAVE_API_KEY=your-key'));
+        } else if (name === 'github') {
+          console.log(chalk.yellow('\n⚠ Note: Requires GITHUB_TOKEN environment variable'));
+          console.log(chalk.gray('  Create a token at: https://github.com/settings/tokens'));
+        } else if (name === 'slack') {
+          console.log(chalk.yellow('\n⚠ Note: Requires SLACK_BOT_TOKEN and SLACK_TEAM_ID environment variables'));
+        }
+      }
+    });
+
+  mcpCmd
+    .command('add <name>')
+    .description('Add an MCP server')
+    .option('-t, --transport <type>', 'Transport type: stdio, http, or sse', 'stdio')
+    .option('-e, --env <key=value...>', 'Environment variables for the server')
+    .argument('[command_or_url]', 'Command (for stdio) or URL (for http/sse)')
+    .argument('[args...]', 'Arguments for the command (stdio only, use -- to separate)')
+    .allowUnknownOption(true)
+    .allowExcessArguments(true)
+    .action(async (name: string, commandOrUrl: string | undefined, args: string[], options: any, command: any) => {
+      // Get remaining args after -- separator (they're in command.args)
+      const allArgs = command.args || [];
+      const nameIdx = allArgs.indexOf(name);
+      // Everything after name is the command and its args
+      const commandArgs = nameIdx >= 0 ? allArgs.slice(nameIdx + 1) : [];
+      if (commandArgs.length > 0) {
+        commandOrUrl = commandArgs[0];
+        args = commandArgs.slice(1);
+      }
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      
+      const transport = options.transport.toLowerCase();
+      
+      if (transport === 'stdio') {
+        if (!commandOrUrl) {
+          console.error(chalk.red('Error: Command is required for stdio transport'));
+          console.log(chalk.gray('\nUsage: llm-cli mcp add <name> <command> [args...]'));
+          console.log(chalk.gray('Example: llm-cli mcp add filesystem npx -y @modelcontextprotocol/server-filesystem /path'));
+          console.log(chalk.gray('\nWith env vars (use -- to separate options from command):'));
+          console.log(chalk.gray('  llm-cli mcp add myserver -e API_KEY=secret -- npx -y my-server'));
+          process.exit(1);
+        }
+        
+        const envVars: Record<string, string> = {};
+        if (options.env) {
+          for (const envPair of options.env) {
+            const [key, ...valueParts] = envPair.split('=');
+            if (key && valueParts.length > 0) {
+              envVars[key] = valueParts.join('=');
+            }
+          }
+        }
+        
+        const serverConfig: { command: string; args?: string[]; env?: Record<string, string> } = {
+          command: commandOrUrl,
+        };
+        
+        if (args.length > 0) {
+          serverConfig.args = args;
+        }
+        
+        if (Object.keys(envVars).length > 0) {
+          serverConfig.env = envVars;
+        }
+        
+        config.mcpServers = config.mcpServers || {};
+        config.mcpServers[name] = serverConfig;
+        
+        await configManager.setConfig(config);
+        console.log(chalk.green(`✓ Added MCP server "${name}" (stdio)`));
+        console.log(chalk.gray(`  Command: ${commandOrUrl}${args.length > 0 ? ' ' + args.join(' ') : ''}`));
+        
+      } else if (transport === 'http' || transport === 'sse') {
+        if (!commandOrUrl) {
+          console.error(chalk.red(`Error: URL is required for ${transport} transport`));
+          console.log(chalk.gray(`\nUsage: llm-cli mcp add -t ${transport} <name> <url>`));
+          console.log(chalk.gray(`Example: llm-cli mcp add -t ${transport} stripe https://mcp.stripe.com`));
+          process.exit(1);
+        }
+        
+        // For http/sse, store as a special format
+        config.mcpServers = config.mcpServers || {};
+        config.mcpServers[name] = {
+          command: `__${transport}__`,
+          args: [commandOrUrl],
+        };
+        
+        await configManager.setConfig(config);
+        console.log(chalk.green(`✓ Added MCP server "${name}" (${transport})`));
+        console.log(chalk.gray(`  URL: ${commandOrUrl}`));
+        
+      } else {
+        console.error(chalk.red(`Error: Unknown transport type "${transport}"`));
+        console.log(chalk.gray('Supported transports: stdio, http, sse'));
+        process.exit(1);
+      }
+    });
+
+  mcpCmd
+    .command('add-json <name> <json>')
+    .description('Add an MCP server from JSON configuration')
+    .action(async (name: string, jsonStr: string) => {
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      
+      try {
+        const serverConfig = JSON.parse(jsonStr);
+        
+        // Validate the config has required fields
+        if (serverConfig.type === 'http' || serverConfig.type === 'sse') {
+          if (!serverConfig.url) {
+            console.error(chalk.red('Error: URL is required for http/sse servers'));
+            process.exit(1);
+          }
+          config.mcpServers = config.mcpServers || {};
+          config.mcpServers[name] = {
+            command: `__${serverConfig.type}__`,
+            args: [serverConfig.url],
+          };
+        } else if (serverConfig.command) {
+          config.mcpServers = config.mcpServers || {};
+          config.mcpServers[name] = {
+            command: serverConfig.command,
+            args: serverConfig.args,
+            env: serverConfig.env,
+          };
+        } else {
+          console.error(chalk.red('Error: Invalid MCP server configuration'));
+          console.log(chalk.gray('Expected either "command" (for stdio) or "type"+"url" (for http/sse)'));
+          process.exit(1);
+        }
+        
+        await configManager.setConfig(config);
+        console.log(chalk.green(`✓ Added MCP server "${name}" from JSON`));
+        
+      } catch (e) {
+        console.error(chalk.red('Error: Invalid JSON'));
+        console.log(chalk.gray('Example: llm-cli mcp add-json myserver \'{"command":"npx","args":["-y","server"]}\''));
+        process.exit(1);
+      }
+    });
+
+  mcpCmd
+    .command('list')
+    .description('List all configured MCP servers')
+    .action(async () => {
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      
+      const servers = config.mcpServers || {};
+      const serverNames = Object.keys(servers);
+      
+      if (serverNames.length === 0) {
+        console.log(chalk.gray('No MCP servers configured.'));
+        console.log(chalk.gray('\nAdd one with: llm-cli mcp add <name> <command> [args...]'));
+        return;
+      }
+      
+      console.log(chalk.bold('Configured MCP servers:\n'));
+      
+      for (const name of serverNames) {
+        const server = servers[name];
+        
+        // Check for http/sse transport marker
+        if (server.command.startsWith('__') && server.command.endsWith('__')) {
+          const transport = server.command.slice(2, -2);
+          console.log(`  ${chalk.cyan(name)} ${chalk.gray(`(${transport})`)}`);
+          console.log(`    URL: ${server.args?.[0] || '(none)'}`);
+        } else {
+          console.log(`  ${chalk.cyan(name)} ${chalk.gray('(stdio)')}`);
+          console.log(`    Command: ${server.command}${server.args?.length ? ' ' + server.args.join(' ') : ''}`);
+          if (server.env && Object.keys(server.env).length > 0) {
+            console.log(`    Env: ${Object.keys(server.env).join(', ')}`);
+          }
+        }
+        console.log();
+      }
+    });
+
+  mcpCmd
+    .command('get <name>')
+    .description('Show details for a specific MCP server')
+    .action(async (name: string) => {
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      
+      const server = config.mcpServers?.[name];
+      
+      if (!server) {
+        console.error(chalk.red(`Error: MCP server "${name}" not found`));
+        process.exit(1);
+      }
+      
+      console.log(chalk.bold(`MCP Server: ${name}\n`));
+      
+      if (server.command.startsWith('__') && server.command.endsWith('__')) {
+        const transport = server.command.slice(2, -2);
+        console.log(`  Transport: ${transport}`);
+        console.log(`  URL: ${server.args?.[0] || '(none)'}`);
+      } else {
+        console.log(`  Transport: stdio`);
+        console.log(`  Command: ${server.command}`);
+        if (server.args?.length) {
+          console.log(`  Args: ${JSON.stringify(server.args)}`);
+        }
+        if (server.env && Object.keys(server.env).length > 0) {
+          console.log(`  Env:`);
+          for (const [key, value] of Object.entries(server.env)) {
+            console.log(`    ${key}=${value}`);
+          }
+        }
+      }
+    });
+
+  mcpCmd
+    .command('remove <name>')
+    .description('Remove an MCP server')
+    .action(async (name: string) => {
+      const configManager = new ConfigManager();
+      const config = await configManager.loadConfig();
+      
+      if (!config.mcpServers?.[name]) {
+        console.error(chalk.red(`Error: MCP server "${name}" not found`));
+        process.exit(1);
+      }
+      
+      delete config.mcpServers[name];
+      await configManager.setConfig(config);
+      
+      console.log(chalk.green(`✓ Removed MCP server "${name}"`));
     });
 
   return program;

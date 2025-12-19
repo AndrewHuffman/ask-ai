@@ -87,17 +87,49 @@ compinit
 
 ### MCP Servers
 
-You can configure MCP servers in `~/.config/llm-cli/mcp.json`:
+MCP servers are stored in `~/.config/llm-cli/config.json` and can be managed via CLI commands.
 
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "node",
-      "args": ["/path/to/server.js"]
-    }
-  }
-}
+**List available presets:**
+```bash
+llm-cli mcp presets
+```
+
+**Add preset servers:**
+```bash
+# Add deepwiki (remote SSE server for GitHub repo documentation)
+llm-cli mcp add-preset deepwiki
+
+# Add filesystem access with custom root path
+llm-cli mcp add-preset filesystem --path /path/to/dir
+
+# Add brave search with API key
+llm-cli mcp add-preset brave-search -e BRAVE_API_KEY=your-key
+
+# Add web fetcher
+llm-cli mcp add-preset fetch
+```
+
+**Add custom servers:**
+```bash
+# Add a local stdio server
+llm-cli mcp add my-server node /path/to/server.js
+
+# Add with environment variables (use -- to separate)
+llm-cli mcp add my-server -e API_KEY=secret -- npx -y my-mcp-server
+
+# Add a remote HTTP/SSE server
+llm-cli mcp add -t http stripe https://mcp.stripe.com
+llm-cli mcp add -t sse asana https://mcp.asana.com/sse
+
+# Add from JSON config
+llm-cli mcp add-json myserver '{"command":"node","args":["server.js"]}'
+```
+
+**Manage servers:**
+```bash
+llm-cli mcp list              # List all configured servers
+llm-cli mcp get <name>        # Show details for a server
+llm-cli mcp remove <name>     # Remove a server
 ```
 
 ### Command Preferences
