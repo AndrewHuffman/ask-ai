@@ -72,6 +72,25 @@ export class RagEngine {
       }
     }
 
+    // 4. MCP Context
+    const mcpTools = await this.mcp.getTools();
+    if (mcpTools.length > 0) {
+      parts.push('## Available MCP Tools');
+      parts.push('You have access to these tools through MCP servers. Mention them if they would be useful:');
+      mcpTools.forEach(tool => {
+        parts.push(`- ${tool.name}: ${tool.description}`);
+      });
+    }
+
+    const mcpResources = await this.mcp.getResources(query);
+    if (mcpResources.length > 0) {
+      parts.push('## Available MCP Resources');
+      parts.push('These resources are available via MCP:');
+      mcpResources.forEach(resource => {
+        parts.push(`- ${resource.uri}: ${resource.name} (${resource.description || 'no description'})`);
+      });
+    }
+
     return parts.join('\n\n');
   }
 

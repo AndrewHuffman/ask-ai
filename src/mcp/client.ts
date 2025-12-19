@@ -1,18 +1,20 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { ConfigLoader } from './config.js';
+import { ConfigManager } from '../config.js';
 
 export class McpManager {
   private clients: Client[] = [];
-  private configLoader: ConfigLoader;
+  private configManager: ConfigManager;
 
   constructor() {
-    this.configLoader = new ConfigLoader();
+    this.configManager = new ConfigManager();
   }
 
   async connectAll() {
-    const config = await this.configLoader.loadConfig();
+    const config = await this.configManager.loadConfig();
     
+    if (!config.mcpServers) return;
+
     for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
       try {
         const transport = new StdioClientTransport({

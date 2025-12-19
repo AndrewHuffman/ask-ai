@@ -11,7 +11,8 @@ export class LlmWrapper {
   async prompt(input: string, options: LlmOptions = {}): Promise<string> {
     const args: string[] = [];
     
-    if (options.model) args.push('-m', options.model);
+    const model = options.model || process.env.LLM_MODEL;
+    if (model) args.push('-m', model);
     if (options.system) args.push('--system', options.system);
     
     args.push(input);

@@ -16,6 +16,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
     "better-sqlite3": "^12.5.0",
