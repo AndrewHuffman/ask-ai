@@ -1,6 +1,6 @@
-# llm-cli
+# ask-ai
 
-`llm-cli` is an enhanced command-line interface for LLM interactions, designed specifically for terminal productivity. It automatically gathers context from your current environment—including file structure, command history, and session history—to provide more accurate and executable terminal commands.
+`ask-ai` is an enhanced command-line interface for LLM interactions, designed specifically for terminal productivity. It automatically gathers context from your current environment—including file structure, command history, and session history—to provide more accurate and executable terminal commands.
 
 ## Key Features
 
@@ -25,8 +25,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/andrewhuffman/llm-cli.git
-cd llm-cli
+git clone https://github.com/andrewhuffman/ask-ai.git
+cd ask-ai
 
 # Install dependencies and link globally
 npm install
@@ -38,12 +38,12 @@ npm link
 
 Ask a question directly:
 ```bash
-llm-cli "how do I find all large files in the current directory?"
+ask-ai "how do I find all large files in the current directory?"
 ```
 
 Enter **interactive mode** by omitting the query:
 ```bash
-llm-cli
+ask-ai
 ```
 
 The tool will:
@@ -55,7 +55,7 @@ The tool will:
 ### Options
 
 ```bash
-llm-cli [query] [options]
+ask-ai [query] [options]
 
 Options:
   -m, --model <model>  Specify the model to use (passed to llm)
@@ -74,7 +74,7 @@ Options:
 
 Generate zsh completions:
 ```bash
-llm-cli completion > ~/.zsh/completion/_llm-cli
+ask-ai completion > ~/.zsh/completion/_ask-ai
 ```
 Then add the following to your `~/.zshrc`:
 ```bash
@@ -87,49 +87,49 @@ compinit
 
 ### MCP Servers
 
-MCP servers are stored in `~/.config/llm-cli/config.json` and can be managed via CLI commands.
+MCP servers are stored in `~/.config/ask-ai/config.json` and can be managed via CLI commands.
 
 **List available presets:**
 ```bash
-llm-cli mcp presets
+ask-ai mcp presets
 ```
 
 **Add preset servers:**
 ```bash
 # Add deepwiki (remote SSE server for GitHub repo documentation)
-llm-cli mcp add-preset deepwiki
+ask-ai mcp add-preset deepwiki
 
 # Add filesystem access with custom root path
-llm-cli mcp add-preset filesystem --path /path/to/dir
+ask-ai mcp add-preset filesystem --path /path/to/dir
 
 # Add brave search with API key
-llm-cli mcp add-preset brave-search -e BRAVE_API_KEY=your-key
+ask-ai mcp add-preset brave-search -e BRAVE_API_KEY=your-key
 
 # Add web fetcher
-llm-cli mcp add-preset fetch
+ask-ai mcp add-preset fetch
 ```
 
 **Add custom servers:**
 ```bash
 # Add a local stdio server
-llm-cli mcp add my-server node /path/to/server.js
+ask-ai mcp add my-server node /path/to/server.js
 
 # Add with environment variables (use -- to separate)
-llm-cli mcp add my-server -e API_KEY=secret -- npx -y my-mcp-server
+ask-ai mcp add my-server -e API_KEY=secret -- npx -y my-mcp-server
 
 # Add a remote HTTP/SSE server
-llm-cli mcp add -t http stripe https://mcp.stripe.com
-llm-cli mcp add -t sse asana https://mcp.asana.com/sse
+ask-ai mcp add -t http stripe https://mcp.stripe.com
+ask-ai mcp add -t sse asana https://mcp.asana.com/sse
 
 # Add from JSON config
-llm-cli mcp add-json myserver '{"command":"node","args":["server.js"]}'
+ask-ai mcp add-json myserver '{"command":"node","args":["server.js"]}'
 ```
 
 **Manage servers:**
 ```bash
-llm-cli mcp list              # List all configured servers
-llm-cli mcp get <name>        # Show details for a server
-llm-cli mcp remove <name>     # Remove a server
+ask-ai mcp list              # List all configured servers
+ask-ai mcp get <name>        # Show details for a server
+ask-ai mcp remove <name>     # Remove a server
 ```
 
 ### Command Preferences
@@ -137,7 +137,7 @@ llm-cli mcp remove <name>     # Remove a server
 To see which modern command alternatives were detected on your system:
 
 ```bash
-llm-cli --show-prefs
+ask-ai --show-prefs
 ```
 
 ### Default Model
@@ -150,9 +150,9 @@ You can set a default model in three ways:
    ```
 2. **CLI Config**: Use the built-in config command.
    ```bash
-   llm-cli config set defaultModel gpt-4o
+   ask-ai config set defaultModel gpt-4o
    ```
-3. **LLM Tool Default**: `llm-cli` will respect the default model set in the underlying `llm` tool.
+3. **LLM Tool Default**: `ask-ai` will respect the default model set in the underlying `llm` tool.
    ```bash
    llm models default gpt-4o
    ```

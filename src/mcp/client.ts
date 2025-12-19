@@ -24,7 +24,7 @@ export class McpManager {
         });
 
         const client = new Client({
-          name: "llm-cli-client",
+          name: "ask-ai-client",
           version: "1.0.0",
         }, {
           capabilities: {}
