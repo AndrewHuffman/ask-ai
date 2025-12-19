@@ -2,9 +2,6 @@
 #        hey-ai: a cli-based ai assistant        
 #     https://github.com/AndrewHuffman/hey-ai 
 # ────────────────────────────────────────────────
-#   Wraps the (unaffiliated) `llm` cli tool.       
-#  See `llm` docs at https://llm.datasette.io/ 
-# ────────────────────────────────────────────────
 
 
 # ────────────────────────────────────────────────
@@ -33,8 +30,9 @@ hey-ai --show-context
 hey-ai "update the `fd` command you just gave me to sort by size"
 
 # ─────────────────────────────
-# Can retrieve file contents as needed
+# Can use MCP to retrieve file contents
 # ─────────────────────────────
 
-hey-ai --model claude-opus-4.5 "review record-demo-node.js and succinctly list issues you find"
+hey-ai "summarize the contents of ./package.json"
 
+hey-ai "I just want to make sure it looks correct! does it?"
