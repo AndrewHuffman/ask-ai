@@ -1,1 +1,0 @@
-echo "# hey-ai, cli-based ai assistant that wraps llm"

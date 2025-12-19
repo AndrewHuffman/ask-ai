@@ -1,0 +1,40 @@
+# ────────────────────────────────────────────────
+#        hey-ai: a cli-based ai assistant        
+#     https://github.com/AndrewHuffman/hey-ai 
+# ────────────────────────────────────────────────
+#   Wraps the (unaffiliated) `llm` cli tool.       
+#  See `llm` docs at https://llm.datasette.io/ 
+# ────────────────────────────────────────────────
+
+
+# ────────────────────────────────────────────────
+# Basic usage
+# ────────────────────────────────────────────────
+
+hey-ai "hello! how are you?"
+
+# ────────────────────────────────────────────────
+# Query using specific models
+# ────────────────────────────────────────────────
+
+hey-ai --model claude-haiku-4.5 "find all files in the current directory older than 30 minutes and larger than 1kb"
+
+!paste
+
+# ─────────────────────────────
+# Includes helpful context
+# ─────────────────────────────
+hey-ai --show-context
+
+# ─────────────────────────────
+# Reference past responses
+# ─────────────────────────────
+
+hey-ai "update the `fd` command you just gave me to sort by size"
+
+# ─────────────────────────────
+# Can retrieve file contents as needed
+# ─────────────────────────────
+
+hey-ai --model claude-opus-4.5 "review record-demo-node.js and succinctly list issues you find"
+
