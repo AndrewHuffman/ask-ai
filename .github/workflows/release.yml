@@ -7,11 +7,12 @@ on:
 
 permissions:
   contents: write
-  id-token: write  # Required for npm provenance
+  id-token: write  # Required for npm provenance attestation
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: npm  # Optional: use GitHub environment for additional protection
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,7 +80,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to npm
-        run: pnpm publish --no-git-checks --provenance --access public
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
