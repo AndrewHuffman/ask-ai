@@ -1,34 +1,30 @@
-# Todo: Bugs, Refinements, Quality, & Features
+# Todo
 
 > [!IMPORTANT] Agent Instructions
 > **Completing Tasks:** Mark the item as `[x]`, move it to the **Completed** section, and append the relevant commit hash(es).
 > **Suggestions:** If you have any suggestions, please append them to the relevant section, marked with [🤖 Suggestion].
 
-## Bugs
-
-- [ ] ...
-
 ## Refinements
 
-- [ ] CI/CD
+### Setup & Ease of Use
 
-- [ ] **Context Retrieval & Usage Improvements:**
-  - [ ] It should use context when applicable, but it shouldn't assume something in the context is always relevant.
-  - [ ] For instance, if I ask it to help me write an `fd` command, and then I follow up later asking it to help me convert an gif to video, it shouldn't take into account the `fd` context.
-  - [ ] Arguably, the agent should use a tool call (can be internal) to ask for the context, and then use that context to provide a more accurate response. I think we have to balance, what is likely needed for most tasks against what can be retrieved when needed.
-  - [ ] For instance, if I ask it to use fd to find something, it doesn't really need to know other commands or even history unless my query appears to be a follow up to a previous command.
-  - [ ] Relatedly, we should use RAG and semantic search to narrow down the context to the most relevant content. This would allow us to have available, for instance, all possible commands/path binaries available on the system (ideally with descriptions of what they do), but only retrieve those that are most relevant to the query.
-- [ ] **Best Practices:**
-  - [ ] We should externalize all prompts into a template files
-  - [ ] Human in the Loop interrupts; maybe use LangGraph for simple orchestrations?
+- [ ] Make it easier to setup. For instance, we should detect if they have appropriate environment variables set, and if not, we should prompt them to set them.
+- [ ] Maybe a walkthrough the first time they run it?
+- [ ] Other ideas?
 
-## Quality
+### Context Retrieval & Usage Improvements
 
+- [ ] It should use context when applicable, but it shouldn't assume something in the context is always relevant.
+- [ ] For instance, if I ask it to help me write an `fd` command, and then I follow up later asking it to help me convert an gif to video, it shouldn't take into account the `fd` context.
+- [ ] Arguably, the agent should use a tool call (can be internal) to ask for the context, and then use that context to provide a more accurate response. I think we have to balance, what is likely needed for most tasks against what can be retrieved when needed.
+- [ ] For instance, if I ask it to use fd to find something, it doesn't really need to know other commands or even history unless my query appears to be a follow up to a previous command.
+- [ ] Relatedly, we should use RAG and semantic search to narrow down the context to the most relevant content. This would allow us to have available, for instance, all possible commands/path binaries available on the system (ideally with descriptions of what they do), but only retrieve those that are most relevant to the query.
+
+### Best Practices
+
+- [ ] We should externalize all prompts into a template files
+- [ ] Human in the Loop interrupts; maybe use LangGraph for simple orchestrations?
 - [ ] Evaluation testing using LangSmith & LLM-as-a-Judge
-
-## Features
-
-- [ ] ...
 
 ---
 

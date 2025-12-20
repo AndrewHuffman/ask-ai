@@ -6,6 +6,7 @@ This workflow automates the process of generating a Pull Request description by 
 
 // turbo-all
 
+0. If there are unstaged files, stage them in logical groupings, and create commits for each group
 1. Identify the base branch (usually `main` or `master`).
 2. Generate a diff of the current changes against the base branch.
 3. Read the project's PR template at `.github/pull_request_template.md`.

@@ -149,13 +149,41 @@ export class RagEngine {
     return Array.from(commands).slice(0, 3); // Limit to 3 commands
   }
 
+  /**
+   * Detect if query appears to be a follow-up or requires history context
+   */
+  private shouldIncludeHistory(query: string): boolean {
+    const lowerQuery = query.toLowerCase();
+    
+    // Trigger words that suggest needing history
+    const triggerWords = [
+      'again', 'previous', 'last', 'before', 'earlier', 'that', 'it', 'same',
+      'just now', 'you said', 'you mentioned', 'continue', 'what was', 'what did',
+      'remind me', 'show me again', 'repeat', 'redo', 'like before'
+    ];
+    
+    // Check for trigger words
+    for (const trigger of triggerWords) {
+      if (lowerQuery.includes(trigger)) {
+        return true;
+      }
+    }
+    
+    // Very short queries are often follow-ups
+    if (query.trim().split(/\s+/).length <= 3) {
+      return true;
+    }
+    
+    return false;
+  }
+
   async assembleContext(query: string): Promise<string> {
     const parts: string[] = [];
 
-    // 0. System information
+    // 0. System information (always included)
     parts.push(this.getOsContext());
 
-    // 1. Command preferences (detected from system)
+    // 1. Command preferences (always included - lightweight)
     const commandContext = this.commands.getContextString();
     if (commandContext) {
       parts.push(commandContext);
@@ -163,62 +191,78 @@ export class RagEngine {
 
     // 2. Man/tldr pages for commands mentioned in query
     const mentionedCommands = this.extractCommandsFromQuery(query);
+    const preferences = this.commands.getPreferences();
+    
     for (const cmd of mentionedCommands) {
-      const manPage = this.getManPage(cmd);
+      // If user has a preferred alternative for this command, fetch docs for that instead
+      const preferredCmd = preferences[cmd] || cmd;
+      const manPage = this.getManPage(preferredCmd);
       if (manPage) {
-        parts.push(`## Documentation for \`${cmd}\``);
+        const note = preferredCmd !== cmd ? ` (preferred over \`${cmd}\`)` : '';
+        parts.push(`## Documentation for \`${preferredCmd}\`${note}`);
         parts.push(manPage);
       }
     }
 
-    // 3. ZSH History (Last 15 commands)
-    const recentCommands = await this.history.getLastEntries(15);
-    if (recentCommands.length > 0) {
-      parts.push('## Recent Terminal History');
-      parts.push(recentCommands.map(e => `${e.command}`).join('\n'));
+    // 3. ZSH History - only if query seems terminal-related
+    const terminalKeywords = ['run', 'command', 'terminal', 'shell', 'execute', 'sudo', 'history'];
+    const isTerminalQuery = terminalKeywords.some(kw => query.toLowerCase().includes(kw)) 
+      || mentionedCommands.length > 0;
+    
+    if (isTerminalQuery) {
+      const recentCommands = await this.history.getLastEntries(5);
+      if (recentCommands.length > 0) {
+        parts.push('## Recent Terminal History');
+        parts.push(recentCommands.map(e => `${e.command}`).join('\n'));
+      }
     }
 
-    // 4. Session History (Relevant past Q&A)
-    // Always include last turn for conversation continuity
-    const lastTurn = this.session.getRecentEntries(1);
-    const relevantSession = this.session.search(query, 3);
-    
-    // Merge and dedupe
-    const sessionEntries = [...lastTurn, ...relevantSession].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-    
-    if (sessionEntries.length > 0) {
-      parts.push('## Relevant AI Interaction History');
-      // Sort by timestamp asc for logical flow
-      sessionEntries.sort((a, b) => a.timestamp - b.timestamp).forEach(entry => {
-        parts.push(`User: ${entry.prompt}`);
-        parts.push(`Assistant: ${entry.response}`);
-      });
+    // 4. Session History - HEURISTIC: only if query seems like follow-up
+    if (this.shouldIncludeHistory(query)) {
+      // Use hybrid search for better relevance
+      const relevantSession = await this.session.searchHybrid(query, 3);
+      const lastTurn = this.session.getRecentEntries(1);
+      
+      // Merge and dedupe
+      const sessionEntries = [...lastTurn, ...relevantSession].filter(
+        (v, i, a) => a.findIndex(t => t.id === v.id) === i
+      );
+      
+      if (sessionEntries.length > 0) {
+        parts.push('## Relevant AI Interaction History');
+        sessionEntries.sort((a, b) => a.timestamp - b.timestamp).forEach(entry => {
+          parts.push(`User: ${entry.prompt}`);
+          parts.push(`Assistant: ${entry.response}`);
+        });
+      }
     }
 
-    // 5. File Context
-    const fileList = await this.files.listFiles(50);
-    if (fileList.length > 0) {
-      parts.push('## Current Directory Files');
-      parts.push(fileList.join('\n'));
+    // 5. File Context - only if query seems file-related
+    const fileKeywords = ['file', 'read', 'open', 'edit', 'create', 'delete', 'list', 'directory', 'folder', 'path'];
+    const isFileQuery = fileKeywords.some(kw => query.toLowerCase().includes(kw));
+    
+    if (isFileQuery) {
+      const fileList = await this.files.listFiles(20);
+      if (fileList.length > 0) {
+        parts.push('## Current Directory Files');
+        parts.push(fileList.join('\n'));
 
-      // If query mentions a file in the list, include its content
-      for (const file of fileList) {
-        if (query.includes(file) || query.includes(file.split('/').pop()!)) {
-          const content = await this.files.getFileContent(file);
-          parts.push(`## Content of ${file}`);
-          parts.push('```\n' + content + '\n```');
+        // Only include file content if explicitly mentioned
+        for (const file of fileList) {
+          const basename = file.split('/').pop()!;
+          if (query.includes(file) || query.includes(basename)) {
+            const content = await this.files.getFileContent(file);
+            parts.push(`## Content of ${file}`);
+            parts.push('```\n' + content + '\n```');
+          }
         }
       }
     }
 
-    // 6. MCP Tools Available (informational - actual execution via function calling)
+    // 6. MCP Tools - brief summary only
     const mcpTools = await this.mcp.getTools();
     if (mcpTools.length > 0) {
-      parts.push('## MCP Tools Available');
-      parts.push('You have access to these tools via function calling. Use them when the user\'s request requires reading files, fetching data, or other external actions:');
-      mcpTools.forEach(tool => {
-        parts.push(`- **${tool.name}** (${tool.serverName}): ${tool.description}`);
-      });
+      parts.push(`## Tools Available: ${mcpTools.map(t => t.name).join(', ')}`);
     }
 
     const mcpResources = await this.mcp.getResources(query);
@@ -234,6 +278,6 @@ export class RagEngine {
   }
 
   async saveInteraction(prompt: string, response: string) {
-    this.session.addEntry(prompt, response, process.cwd());
+    await this.session.addEntry(prompt, response, process.cwd());
   }
 }

@@ -50,6 +50,9 @@ importers:
       inquirer:
         specifier: ^13.1.0
         version: 13.1.0(@types/node@25.0.3)
+      sqlite-vss:
+        specifier: ^0.1.2
+        version: 0.1.2
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -2581,6 +2584,24 @@ packages:
 
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
+
+  sqlite-vss-darwin-arm64@0.1.2:
+    resolution: {integrity: sha512-zyDk9eg33nBABrUC4cqQ7el8KJaRPzsqp8Y/nGZ0CAt7o1PMqLoCOgREorill5MGiZEBmLqxdAgw0O2MFwq4mw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  sqlite-vss-darwin-x64@0.1.2:
+    resolution: {integrity: sha512-w+ODOH2dNkyO6UaGclwC0jwNf/FBsKaE53XKJ7dFmpOvlvO0/9sA1stkWXygykRVWwa3UD8ow0qbQpRwdOFyqg==}
+    cpu: [x64]
+    os: [darwin]
+
+  sqlite-vss-linux-x64@0.1.2:
+    resolution: {integrity: sha512-y1qktcHAZcfN1nYMcF5os/cCRRyaisaNc2C9I3ceLKLPAqUWIocsOdD5nNK/dIeGPag/QeT2ZItJ6uYWciLiAg==}
+    cpu: [x64]
+    os: [linux]
+
+  sqlite-vss@0.1.2:
+    resolution: {integrity: sha512-MgTz3GLT04ckv1kaesbrsUU6/kcVsA6vGeCS/HO5d/8zKqCuZFCD0QlJaQnS6zwaMyPG++BO/uu40MMrMa0cow==}
 
   stack-utils@2.0.6:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
@@ -5601,6 +5622,21 @@ snapshots:
   split2@4.2.0: {}
 
   sprintf-js@1.0.3: {}
+
+  sqlite-vss-darwin-arm64@0.1.2:
+    optional: true
+
+  sqlite-vss-darwin-x64@0.1.2:
+    optional: true
+
+  sqlite-vss-linux-x64@0.1.2:
+    optional: true
+
+  sqlite-vss@0.1.2:
+    optionalDependencies:
+      sqlite-vss-darwin-arm64: 0.1.2
+      sqlite-vss-darwin-x64: 0.1.2
+      sqlite-vss-linux-x64: 0.1.2
 
   stack-utils@2.0.6:
     dependencies:
