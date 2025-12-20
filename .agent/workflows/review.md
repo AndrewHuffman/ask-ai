@@ -15,6 +15,9 @@ This workflow helps you address feedback on a Pull Request by fetching comments 
    - If it's a request for changes, implement the necessary modifications.
 5. Summarize the changes made in response to the review.
 6. (Optional) Reply to comments using `gh pr comment` or `gh pr review --comment`.
+7. Delete reviews & comments files that you retrieved
+8. Create commit(s) for changes
+9. Update remote branch
 
 ### Example Command
 
