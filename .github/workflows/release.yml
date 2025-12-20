@@ -24,7 +24,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[no-release]') && !contains(github.event.head_commit.message, 'chore(release):')"
+    if: ${{ !contains(github.event.head_commit.message, '[no-release]') && !contains(github.event.head_commit.message, 'chore(release):') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,19 +94,17 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: Generate changelog
+      - name: Update CHANGELOG.md
         id: changelog
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          pnpm exec conventional-changelog -p angular -i CHANGELOG.md -s
 
-          if [ -z "$LAST_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
-          else
-            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
-          fi
+          # Get just the latest entry for the GitHub Release
+          # We use -r 1 to get the latest release section
+          CHANGES=$(pnpm exec conventional-changelog -p angular -r 1)
 
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "$CHANGES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       # IMPORTANT: Publish to npm BEFORE pushing anything
@@ -117,7 +115,7 @@ jobs:
       # Only runs if npm publish succeeded
       - name: Commit and tag
         run: |
-          git add package.json pnpm-lock.yaml
+          git add package.json pnpm-lock.yaml CHANGELOG.md
           git commit -m "chore(release): ${{ steps.bump.outputs.new_version }}" || echo "No changes to commit"
           git tag ${{ steps.bump.outputs.new_version }}
 
@@ -133,8 +131,6 @@ jobs:
         with:
           tag_name: ${{ steps.bump.outputs.new_version }}
           body: |
-            ## Changes
-
             ${{ steps.changelog.outputs.changelog }}
 
             ## Install
