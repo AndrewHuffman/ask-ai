@@ -1,3 +1,12 @@
+## [0.4.1](https://github.com/AndrewHuffman/hey-ai/compare/v0.4.0...v0.4.1) (2025-12-20)
+
+
+### Bug Fixes
+
+* **review:** address feedback in release workflow and TODO.md ([1a8e42b](https://github.com/AndrewHuffman/hey-ai/commit/1a8e42b6923334ab6016eea8c9abd2567ca32051))
+
+
+
 # [0.4.0](https://github.com/AndrewHuffman/hey-ai/compare/v0.3.2...v0.4.0) (2025-12-20)
 
 
@@ -52,15 +61,7 @@
 
 
 
-## [0.1.3](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.2...v0.1.3) (2025-12-19)
-
-
-
-## [0.1.2](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.1...v0.1.2) (2025-12-19)
-
-
-
-## [0.1.1](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.0...v0.1.1) (2025-12-19)
+## [0.1.3](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.0...v0.1.3) (2025-12-19)
 
 
 ### Bug Fixes
