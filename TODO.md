@@ -12,7 +12,7 @@
 
 - [ ] CI/CD
 
-- [ ] **Context Retrival & Usage Improvements:**
+- [ ] **Context Retrieval & Usage Improvements:**
   - [ ] It should use context when applicable, but it shouldn't assume something in the context is always relevant.
   - [ ] For instance, if I ask it to help me write an `fd` command, and then I follow up later asking it to help me convert an gif to video, it shouldn't take into account the `fd` context.
   - [ ] Arguably, the agent should use a tool call (can be internal) to ask for the context, and then use that context to provide a more accurate response. I think we have to balance, what is likely needed for most tasks against what can be retrieved when needed.
@@ -46,9 +46,9 @@
   - [x] It is not to complete the task for the developer. It is to provide the developer with the tools to complete the task.
   - [x] It can use MCP tools to help provide more accurate and complete responses.
   - [x] When asking for a command, it should simply provide a single command, ideally as a parameterized function with echos instead of comments since pasting comments in the terminal causes errors.
-- [ ] **OS Specificity:**
-  - [ ] Always include the OS information in the context/prompt.
-  - [ ] Instruct the agent to use appropriate commands/arguments for that specific platform (e.g. macOS vs Linux).
+- [x] **OS Specificity:**
+  - [x] Always include the OS information in the context/prompt.
+  - [x] Instruct the agent to use appropriate commands/arguments for that specific platform (e.g. macOS vs Linux).
 
 ## Quality
 

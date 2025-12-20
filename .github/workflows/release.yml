@@ -97,10 +97,9 @@ jobs:
       - name: Update CHANGELOG.md
         id: changelog
         run: |
-          pnpm exec conventional-changelog -p angular -i CHANGELOG.md -s
+          pnpm exec conventional-changelog -p angular -i CHANGELOG.md -s -r 0
 
           # Get just the latest entry for the GitHub Release
-          # We use -r 1 to get the latest release section
           CHANGES=$(pnpm exec conventional-changelog -p angular -r 1)
 
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
