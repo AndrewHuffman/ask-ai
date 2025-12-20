@@ -1,5 +1,6 @@
 # Source files (dist is published)
 src/
+tools/
 
 # Tests
 tests/
