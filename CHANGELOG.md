@@ -1,0 +1,81 @@
+# [0.4.0](https://github.com/AndrewHuffman/hey-ai/compare/v0.3.2...v0.4.0) (2025-12-20)
+
+
+### Features
+
+* improve agent system prompt with OS details and strict output format ([494e340](https://github.com/AndrewHuffman/hey-ai/commit/494e34044eda9237cc3c852573b078698830981b))
+
+
+
+## [0.3.2](https://github.com/AndrewHuffman/hey-ai/compare/v0.3.1...v0.3.2) (2025-12-20)
+
+
+
+## [0.3.1](https://github.com/AndrewHuffman/hey-ai/compare/v0.3.0...v0.3.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* claude 4.5 model names ([#8](https://github.com/AndrewHuffman/hey-ai/issues/8)) ([18d8140](https://github.com/AndrewHuffman/hey-ai/commit/18d814026d39997702ac44a9af14fe5d6f73a3f8))
+
+
+
+# [0.3.0](https://github.com/AndrewHuffman/hey-ai/compare/v0.2.0...v0.3.0) (2025-12-19)
+
+
+### Features
+
+* add models list ([#4](https://github.com/AndrewHuffman/hey-ai/issues/4)) ([8c098d6](https://github.com/AndrewHuffman/hey-ai/commit/8c098d617d4877930ed49f05d88d8c1648b6ba0d))
+
+
+
+# [0.2.0](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.5...v0.2.0) (2025-12-19)
+
+
+### Features
+
+* add OS info and command/man RAG search to context ([bfafc86](https://github.com/AndrewHuffman/hey-ai/commit/bfafc86b111727441e673976c3493fa867249a98))
+* integrate AI SDK and MCP tool calling with updated system prompt and refined test setup ([74dde1d](https://github.com/AndrewHuffman/hey-ai/commit/74dde1d23f1c3cf7d0b137b498d03a6d8417abf9))
+
+
+
+## [0.1.5](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.4...v0.1.5) (2025-12-19)
+
+
+
+## [0.1.4](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.3...v0.1.4) (2025-12-19)
+
+
+### Bug Fixes
+
+* add repository field for npm provenance verification ([5e5d934](https://github.com/AndrewHuffman/hey-ai/commit/5e5d934e4d0071c9e858298869d4eea7eecb4ebc))
+
+
+
+## [0.1.3](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.2...v0.1.3) (2025-12-19)
+
+
+
+## [0.1.2](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.1...v0.1.2) (2025-12-19)
+
+
+
+## [0.1.1](https://github.com/AndrewHuffman/hey-ai/compare/v0.1.0...v0.1.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* remove deprecated husky shebang lines ([6429d3c](https://github.com/AndrewHuffman/hey-ai/commit/6429d3c8f3825e9edf796868597d6e414c7ff231))
+
+
+
+# [0.1.0](https://github.com/AndrewHuffman/hey-ai/compare/7f2e5224cf6974a786c87dcbd1378cf625e12170...v0.1.0) (2025-12-19)
+
+
+### Features
+
+* add configuration management, interactive mode, and MCP support ([7f84ff2](https://github.com/AndrewHuffman/hey-ai/commit/7f84ff2372fb7cc963a68f66fb0012fc2305cd5a))
+* add initial project structure with TypeScript and core functionality ([7f2e522](https://github.com/AndrewHuffman/hey-ai/commit/7f2e5224cf6974a786c87dcbd1378cf625e12170))
+
+
+

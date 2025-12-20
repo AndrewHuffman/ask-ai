@@ -1,16 +1,16 @@
 # Todo: Bugs, Refinements, Quality, & Features
 
-## Agent Instructions
-
-| Action               | Instruction                                                                                            |
-| :------------------- | :----------------------------------------------------------------------------------------------------- |
-| **Completing Tasks** | Mark the item as `[x]`, move it to the **Completed** section, and append the relevant commit hash(es). |
+> [!IMPORTANT] Agent Instructions
+> **Completing Tasks:** Mark the item as `[x]`, move it to the **Completed** section, and append the relevant commit hash(es).
+> **Suggestions:** If you have any suggestions, please append them to the relevant section, marked with [🤖 Suggestion].
 
 ## Bugs
 
 - [ ] ...
 
 ## Refinements
+
+- [ ] CI/CD
 
 - [ ] **Context Retrival & Usage Improvements:**
   - [ ] It should use context when applicable, but it shouldn't assume something in the context is always relevant.
@@ -37,6 +37,7 @@
 ## Bugs
 
 - [x] `✓ Command copied to clipboard!` is a lie
+- [x] **CI/CD:** Add changelog & release notes
 
 ## Refinements
 
