@@ -5,11 +5,19 @@ import { FileContext } from '../context/files.js';
 import { SessionHistory } from '../context/session.js';
 import { CommandDetector } from '../context/commands.js';
 import { McpManager } from '../mcp/client.js';
+import {
+  getInternalToolDefs,
+  executeInternalTool,
+  isInternalTool,
+  type InternalToolContext,
+  type InternalToolResult
+} from '../tools/index.js';
+import type { McpToolDef } from '../llm/wrapper.js';
 
 export class RagEngine {
   private history: ZshHistory;
   private files: FileContext;
-  private session: SessionHistory;
+  public session: SessionHistory;
   private commands: CommandDetector;
   public mcp: McpManager;
 
@@ -35,7 +43,10 @@ export class RagEngine {
     return lines.join('\n');
   }
 
-  private getManPage(command: string): string | null {
+  /**
+   * Get man/tldr page for a command (public for internal tools)
+   */
+  getManPage(command: string): string | null {
     try {
       // Try tldr first if available
       const tldr = spawnSync('tldr', [command], { 
@@ -178,107 +189,38 @@ export class RagEngine {
     return false;
   }
 
+  /**
+   * Assemble minimal pre-loaded context.
+   * Heavy context (session history, terminal history, files, man pages) is now
+   * fetched on-demand via internal tools that the LLM can call as needed.
+   */
   async assembleContext(query: string): Promise<string> {
     const parts: string[] = [];
 
-    // 0. System information (always included)
+    // 1. System information (always included - lightweight, always useful)
     parts.push(this.getOsContext());
 
-    // 1. Command preferences (always included - lightweight)
+    // 2. Command preferences (always included - lightweight, helps with suggestions)
     const commandContext = this.commands.getContextString();
     if (commandContext) {
       parts.push(commandContext);
     }
 
-    // 2. Man/tldr pages for commands mentioned in query
-    const mentionedCommands = this.extractCommandsFromQuery(query);
-    const preferences = this.commands.getPreferences();
-    
-    for (const cmd of mentionedCommands) {
-      // If user has a preferred alternative for this command, fetch docs for that instead
-      const preferredCmd = preferences[cmd] || cmd;
-      const manPage = this.getManPage(preferredCmd);
-      if (manPage) {
-        const note = preferredCmd !== cmd ? ` (preferred over \`${cmd}\`)` : '';
-        parts.push(`## Documentation for \`${preferredCmd}\`${note}`);
-        parts.push(manPage);
-      }
-    }
+    // 3. Current working directory (useful context for file operations)
+    parts.push(`## Current Directory\n${process.cwd()}`);
 
-    // 3. ZSH History - only if query seems terminal-related
-    const terminalKeywords = [
-      'run', 'command', 'terminal', 'shell', 'execute', 'sudo', 'history',
-      'command history', 'shell history', 'terminal history'
-    ];
-    const isTerminalQuery = terminalKeywords.some(kw => query.toLowerCase().includes(kw)) 
-      || mentionedCommands.length > 0;
-    
-    if (isTerminalQuery) {
-      const recentCommands = await this.history.getLastEntries(5);
-      if (recentCommands.length > 0) {
-        parts.push('## Recent Terminal History');
-        parts.push(recentCommands.map(e => `${e.command}`).join('\n'));
-      }
-    }
-
-    // 4. Session History - HEURISTIC: only if query seems like follow-up
-    if (this.shouldIncludeHistory(query)) {
-      // Use hybrid search over session history:
-      // - Combines fast keyword/FTS5 matching with semantic similarity search.
-      // - This allows retrieving both exact term matches and related concepts (semantic).
-      // - Results from both methods are merged, de-duplicated, and ranked.
-      const relevantSession = await this.session.searchHybrid(query, 3);
-      const lastTurn = this.session.getRecentEntries(1);
-      
-      // Merge and dedupe
-      const sessionEntries = [...lastTurn, ...relevantSession].filter(
-        (v, i, a) => a.findIndex(t => t.id === v.id) === i
-      );
-      
-      if (sessionEntries.length > 0) {
-        parts.push('## Relevant AI Interaction History');
-        sessionEntries.sort((a, b) => a.timestamp - b.timestamp).forEach(entry => {
-          parts.push(`User: ${entry.prompt}`);
-          parts.push(`Assistant: ${entry.response}`);
-        });
-      }
-    }
-
-    // 5. File Context - only if query seems file-related
-    const fileKeywords = [
-      'file', 'files', 'filename', 'filepath', 'directory', 'folder', 'path',
-      'list files', 'list directory', 'list folders'
-    ];
-    const lowerQuery = query.toLowerCase();
-    const mentionsFileConcept = fileKeywords.some(kw => lowerQuery.includes(kw));
-    // Detect explicit paths or filenames (with / or \)
-    const mentionsPathLike = lowerQuery.includes('/') || lowerQuery.includes('\\');
-    const isFileQuery = mentionsFileConcept || mentionsPathLike;
-    
-    if (isFileQuery) {
-      const fileList = await this.files.listFiles(20);
-      if (fileList.length > 0) {
-        parts.push('## Current Directory Files');
-        parts.push(fileList.join('\n'));
-
-        // Only include file content if explicitly mentioned
-        for (const file of fileList) {
-          const basename = file.split('/').pop()!;
-          if (query.includes(file) || query.includes(basename)) {
-            const content = await this.files.getFileContent(file);
-            parts.push(`## Content of ${file}`);
-            parts.push('```\n' + content + '\n```');
-          }
-        }
-      }
-    }
-
-    // 6. MCP Tools - brief summary only
+    // 4. Available tools summary (internal + MCP)
+    const internalTools = this.getInternalTools();
     const mcpTools = await this.mcp.getTools();
-    if (mcpTools.length > 0) {
-      parts.push(`## Tools Available: ${mcpTools.map(t => t.name).join(', ')}`);
+    const allToolNames = [
+      ...internalTools.map(t => t.name),
+      ...mcpTools.map(t => t.name)
+    ];
+    if (allToolNames.length > 0) {
+      parts.push(`## Available Tools\n${allToolNames.join(', ')}`);
     }
 
+    // 5. MCP Resources (if any)
     const mcpResources = await this.mcp.getResources(query);
     if (mcpResources.length > 0) {
       parts.push('## Available MCP Resources');
@@ -289,6 +231,34 @@ export class RagEngine {
     }
 
     return parts.join('\n\n');
+  }
+
+  /**
+   * Get internal context retrieval tool definitions
+   */
+  getInternalTools(): McpToolDef[] {
+    return getInternalToolDefs();
+  }
+
+  /**
+   * Check if a tool name is an internal tool
+   */
+  isInternalTool(toolName: string): boolean {
+    return isInternalTool(toolName);
+  }
+
+  /**
+   * Execute an internal context tool
+   */
+  async executeInternalTool(toolName: string, args: Record<string, unknown>): Promise<InternalToolResult> {
+    const context: InternalToolContext = {
+      session: this.session,
+      history: this.history,
+      files: this.files,
+      getManPage: (cmd: string) => this.getManPage(cmd)
+    };
+
+    return executeInternalTool(toolName, args, context);
   }
 
   async saveInteraction(prompt: string, response: string) {
