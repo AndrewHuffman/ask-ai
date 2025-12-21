@@ -5,7 +5,7 @@ import clipboardy from 'clipboardy';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { RagEngine } from './rag/engine.js';
-import { LlmWrapper, createToolCallHandlers, McpToolDef, getRecommendedModels } from './llm/wrapper.js';
+import { LlmWrapper, McpToolDef, getRecommendedModels } from './llm/wrapper.js';
 import { CommandDetector } from './context/commands.js';
 import { ConfigManager } from './config.js';
 
@@ -24,37 +24,75 @@ async function processQuery(query: string, options: any, rag: RagEngine, llm: Ll
     const config = await configManager.loadConfig();
     const model = options.model || config.defaultModel;
 
+    // Get internal context tools
+    const internalToolDefs = rag.getInternalTools();
+
     // Get MCP tool definitions for function calling
     const mcpToolDefs = await rag.mcp.getToolDefinitionsForGemini();
-    const tools: McpToolDef[] = mcpToolDefs.map(t => ({
+    const mcpTools: McpToolDef[] = mcpToolDefs.map(t => ({
       name: t.name,
       description: t.description || '',
       parameters: t.parameters
     }));
 
+    // Merge all tools (internal + MCP)
+    const tools: McpToolDef[] = [...internalToolDefs, ...mcpTools];
+
     // Create tool call handlers for visual feedback
-    const toolHandlers = createToolCallHandlers(
-      (name) => rag.mcp.getServerForTool(name)
-    );
+    const toolHandlers = {
+      onToolStart: (toolName: string) => {
+        const isInternal = rag.isInternalTool(toolName);
+        if (isInternal) {
+          console.log(chalk.cyan(`\n🔧 [Context: ${toolName}]`));
+        } else {
+          const serverName = rag.mcp.getServerForTool(toolName);
+          const serverInfo = serverName ? ` via ${serverName}` : '';
+          console.log(chalk.cyan(`\n🔧 [MCP: ${toolName}${serverInfo}]`));
+        }
+      },
+      onToolEnd: (toolName: string, success: boolean, durationMs: number) => {
+        const status = success
+          ? chalk.green('✓')
+          : chalk.red('✗');
+        console.log(chalk.gray(`   ${status} completed in ${durationMs}ms\n`));
+      }
+    };
 
     const currentOs = `${os.type()} ${os.release()} (${os.platform()})`;
-    const systemPrompt = options.system || 
+    const systemPrompt = options.system ||
 `You are a skilled Developer Assistant CLI tool running on **${currentOs}**. Your role is to provide the user with precise, executable CLI commands and functions to solve their problems.
+
+## Context Retrieval Tools
+You have access to internal tools for gathering context ON DEMAND. Use these ONLY when genuinely needed:
+
+- **search_session_history**: Search past AI conversations. Use when user references "previous", "last time", "earlier", "that thing we discussed", etc.
+- **get_recent_commands**: Get recent terminal commands. Use when discussing terminal history, debugging command issues, or user asks "what did I just run".
+- **list_project_files**: List project files. Use when user asks about project structure, "what files", or needs file context.
+- **read_file_content**: Read a specific file. Use when you need to examine code/config to give accurate advice.
+- **get_command_docs**: Get tldr/man docs for a command. Use when explaining unfamiliar commands or verifying syntax.
+
+**When to use context tools:**
+- User explicitly asks about history, files, or past interactions
+- You need to verify something before giving advice (e.g., check a config file exists)
+- The query references previous context ("do that again", "like before")
+
+**When NOT to use context tools:**
+- Simple command syntax questions ("how do I use grep")
+- General knowledge questions
+- When you already have sufficient context
 
 ## Core Responsibilities
 - **Provider, Not Agent:** Do not "do" the task (unless asked deeply). Your primary job is to provide the *commands* for the user to execute.
-- **Accuracy First:** Use your MCP tools (file restrictions, command search, etc.) to ensure your suggestions are valid and safe for the user's specific context.
-- **Context Aware:** Analyze the files and environment to tailor your specific command flags and arguments.
+- **Accuracy First:** Use tools to verify context when needed, ensuring your suggestions are valid and safe.
+- **Context Aware:** Fetch context on-demand rather than assuming what's relevant.
 - **Platform Specifics:** ALWAYS use the appropriate commands, flags, and arguments for **${currentOs}**. For example, use \`pbcopy\` on macOS, or BSD-style flags where appropriate.
 
-## Tool Usage Guidelines // strict conformance required
-- **Understand Purpose:** Analyze the tool's description to understand exactly what it does before using it.
-- **Check Applicability:** Verify that the tool is strictly relevant to the user's specific request.
-- **Appropriate Usage:** Use available tools ONLY when the user's request explicitly requires external data (reading files, fetching URLs, etc.).
-- **Error Handling:** If a tool fails, explain the error clearly to the user and suggest alternatives.
-- **Direct Answers:** For simple questions about specific commands or syntax, answer directly without invoking tools.
+## Tool Usage Guidelines
+- **Minimal Fetching:** Only fetch context when genuinely needed - don't call tools speculatively.
+- **Targeted Queries:** Use specific queries/paths rather than broad searches.
+- **Error Handling:** If a tool fails, explain the error clearly and continue without it.
+- **Direct Answers:** For simple questions, answer directly without invoking tools.
 
-## Output Format
 ## Output Format
 - **Single Block ONLY:** Provide ONE markdown code block containing the solution.
 - **NO Text Outside Block:** Do NOT include introductions, conclusions, explanations, or lists outside the code block.
@@ -90,6 +128,10 @@ find_and_delete() {
       system: systemPrompt,
       tools: tools.length > 0 ? tools : undefined,
       onToolCall: async (toolName, args) => {
+        // Route internal context tools differently from MCP tools
+        if (rag.isInternalTool(toolName)) {
+          return rag.executeInternalTool(toolName, args);
+        }
         return rag.mcp.callTool(toolName, args);
       },
       ...toolHandlers

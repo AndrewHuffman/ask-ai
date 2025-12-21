@@ -44,10 +44,13 @@ pnpm link --global
 ### Core Components
 
 **RAG Engine** (`src/rag/engine.ts`)
-- Central orchestrator that assembles context for LLM queries
-- Coordinates context gathering from multiple sources (history, files, commands, MCP)
-- Uses intelligent heuristics to determine which context is relevant based on query content
-- Key method: `assembleContext(query)` - returns formatted context string
+- Central orchestrator for context and tool management
+- Provides minimal pre-loaded context (OS info, command preferences, cwd)
+- Exposes internal context tools for on-demand retrieval
+- Key methods:
+  - `assembleContext(query)` - returns minimal pre-loaded context
+  - `getInternalTools()` - returns internal tool definitions
+  - `executeInternalTool(name, args)` - executes internal context tools
 
 **LLM Wrapper** (`src/llm/wrapper.ts`)
 - Abstracts multi-provider LLM interaction using Vercel AI SDK
@@ -61,6 +64,17 @@ pnpm link --global
 - Indexes tools from all connected servers
 - Handles tool invocation and response formatting
 - Sanitizes JSON schemas for LLM compatibility
+
+**Internal Tools** (`src/tools/internal.ts`)
+- On-demand context retrieval tools that the LLM can call when needed
+- 5 tools available:
+  - `search_session_history` - Search past AI conversations using hybrid FTS+semantic search
+  - `get_recent_commands` - Get recent terminal commands from zsh history
+  - `list_project_files` - List files in current directory (respects .gitignore)
+  - `read_file_content` - Read contents of a specific file
+  - `get_command_docs` - Get tldr/man documentation for a command
+- Tool routing in `index.ts` distinguishes internal tools from MCP tools
+- Visual feedback shows `[Context: tool_name]` for internal tools vs `[MCP: tool_name]` for MCP tools
 
 ### Context Gathering System
 
@@ -107,12 +121,23 @@ pnpm link --global
 
 ## Key Implementation Details
 
-### Context Assembly Heuristics
-The RAG engine uses intelligent filtering to avoid context bloat:
-- **Terminal history**: Only included if query mentions commands or terminal operations
-- **Session history**: Only if query appears to be a follow-up (contains trigger words like "again", "previous", or is very short)
-- **File context**: Only if query mentions files, directories, or contains path-like strings
-- **Man pages**: Automatically fetched for commands detected in query
+### Context Retrieval Strategy
+The system uses an on-demand approach where heavy context is fetched via tool calls:
+
+**Pre-loaded Context** (always included, lightweight):
+- OS/system information
+- Command preferences (detected modern CLI alternatives)
+- Current working directory
+- Available tools list (internal + MCP)
+
+**On-Demand Context** (fetched via internal tools when LLM decides it's needed):
+- Session history - via `search_session_history` tool
+- Terminal history - via `get_recent_commands` tool
+- File listings - via `list_project_files` tool
+- File contents - via `read_file_content` tool
+- Command documentation - via `get_command_docs` tool
+
+This approach reduces token usage for simple queries while allowing the LLM to fetch relevant context when genuinely needed.
 
 ### MCP Tool Integration
 - Tools from all connected MCP servers are aggregated and presented to LLM

@@ -12,15 +12,20 @@
 - [ ] Maybe a walkthrough the first time they run it?
 - [ ] Other ideas?
 
-### Context Retrieval & Usage Improvements
+### Debugging & Observability
 
-- [ ] Arguably, the agent should use a tool call (can be internal) to ask for the context, and then use that context to provide a more accurate response. I think we have to balance, what is likely needed for most tasks against what can be retrieved when needed.
+- [ ] Add `--show-tools` or enhance `--verbose` to display the actual tool call arguments and responses (currently only shows tool name and timing)
 
 ### Best Practices
 
 - [ ] We should externalize all prompts into a template files
 - [ ] Human in the Loop interrupts; maybe use LangGraph for simple orchestrations?
 - [ ] Evaluation testing using LangSmith & LLM-as-a-Judge
+
+## Features
+
+- [ ] Streaming responses - stream LLM output as it's generated instead of waiting for complete response
+- [ ] Image file support - ability to view/analyze image files using multimodal LLM capabilities
 
 ---
 
@@ -45,6 +50,13 @@
 - [x] **OS Specificity:**
   - [x] Always include the OS information in the context/prompt.
   - [x] Instruct the agent to use appropriate commands/arguments for that specific platform (e.g. macOS vs Linux).
+- [x] **On-Demand Context Retrieval via Internal Tools:**
+  - [x] Implemented internal context tools that the LLM can call on-demand instead of pre-loading all context
+  - [x] Created 5 internal tools: `search_session_history`, `get_recent_commands`, `list_project_files`, `read_file_content`, `get_command_docs`
+  - [x] Simplified `assembleContext()` to only include minimal pre-loaded context (OS info, command preferences, cwd, available tools)
+  - [x] Added tool routing to distinguish internal tools from MCP tools
+  - [x] Updated system prompt with guidance on when to use context tools
+  - [x] Added comprehensive tests for internal tools (21 test cases)
 
 ## Quality
 
