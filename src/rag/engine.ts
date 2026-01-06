@@ -4,6 +4,7 @@ import { ZshHistory } from '../context/history.js';
 import { FileContext } from '../context/files.js';
 import { SessionHistory } from '../context/session.js';
 import { CommandDetector } from '../context/commands.js';
+import { CommandDocsCache } from '../context/docs-cache.js';
 import { McpManager } from '../mcp/client.js';
 import {
   getInternalToolDefs,
@@ -19,6 +20,7 @@ export class RagEngine {
   private files: FileContext;
   public session: SessionHistory;
   private commands: CommandDetector;
+  private docsCache: CommandDocsCache;
   public mcp: McpManager;
 
   constructor() {
@@ -26,6 +28,7 @@ export class RagEngine {
     this.files = new FileContext();
     this.session = new SessionHistory();
     this.commands = new CommandDetector();
+    this.docsCache = new CommandDocsCache();
     this.mcp = new McpManager();
   }
 
@@ -44,25 +47,40 @@ export class RagEngine {
   }
 
   /**
-   * Get man/tldr page for a command (public for internal tools)
+   * Get man/tldr page for a command (public for internal tools).
+   * Uses caching with lookup order: cache -> man -> tldr
    */
   getManPage(command: string): string | null {
-    try {
-      // Try tldr first if available
-      const tldr = spawnSync('tldr', [command], { 
-        encoding: 'utf8', 
-        timeout: 5000,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      if (tldr.status === 0 && tldr.stdout.trim()) {
-        return tldr.stdout.trim();
-      }
-    } catch {
-      // tldr not available
+    // 1. Check cache first (instant)
+    const cached = this.docsCache.get(command);
+    if (cached) {
+      return cached;
     }
 
+    // 2. Try man first (fast, ~100ms)
+    const manResult = this.fetchManPage(command);
+    if (manResult) {
+      // Cache async, don't block
+      this.docsCache.set(command, manResult, 'man').catch(() => {});
+      return manResult;
+    }
+
+    // 3. Fall back to tldr (with auto-update disabled, ~4ms)
+    const tldrResult = this.fetchTldrPage(command);
+    if (tldrResult) {
+      // Cache async, don't block
+      this.docsCache.set(command, tldrResult, 'tldr').catch(() => {});
+      return tldrResult;
+    }
+
+    return null;
+  }
+
+  /**
+   * Fetch man page for a command, extracting NAME + SYNOPSIS/DESCRIPTION
+   */
+  private fetchManPage(command: string): string | null {
     try {
-      // Use col -b to strip formatting from man output
       const man = spawnSync('sh', ['-c', `man ${command} 2>/dev/null | col -b`], { 
         encoding: 'utf8', 
         timeout: 5000,
@@ -103,7 +121,26 @@ export class RagEngine {
     } catch {
       // man not available or failed
     }
+    return null;
+  }
 
+  /**
+   * Fetch tldr page for a command (with auto-update disabled for speed)
+   */
+  private fetchTldrPage(command: string): string | null {
+    try {
+      const tldr = spawnSync('tldr', [command], { 
+        encoding: 'utf8', 
+        timeout: 5000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, TLDR_AUTO_UPDATE_DISABLED: '1' }
+      });
+      if (tldr.status === 0 && tldr.stdout.trim()) {
+        return tldr.stdout.trim();
+      }
+    } catch {
+      // tldr not available
+    }
     return null;
   }
 
