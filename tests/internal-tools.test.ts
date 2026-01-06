@@ -51,7 +51,7 @@ const createMockContext = (): InternalToolContext => ({
     getFileContent: jest.fn().mockResolvedValue('file content here'),
     getFileTree: jest.fn().mockResolvedValue('src/index.ts\nsrc/config.ts')
   } as any,
-  getManPage: jest.fn().mockReturnValue('grep - search files for patterns')
+  getManPage: jest.fn().mockResolvedValue('grep - search files for patterns')
 });
 
 describe('Internal Tools Module', () => {
@@ -285,7 +285,7 @@ describe('Internal Tools Module', () => {
 
       it('should handle missing documentation', async () => {
         const context = createMockContext();
-        (context.getManPage as jest.Mock).mockReturnValue(null);
+        (context.getManPage as jest.Mock).mockResolvedValue(null);
 
         const result = await executeInternalTool(
           'get_command_docs',

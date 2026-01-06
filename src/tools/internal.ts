@@ -4,6 +4,7 @@
  * rather than pre-loading all context upfront.
  */
 
+import path from 'node:path';
 import type { SessionHistory, SearchResult } from '../context/session.js';
 import type { ZshHistory, HistoryEntry } from '../context/history.js';
 import type { FileContext } from '../context/files.js';
@@ -59,7 +60,7 @@ const searchSessionHistory: InternalTool = {
   execute: async (args, context): Promise<InternalToolResult> => {
     try {
       const query = args.query as string;
-      const limit = (args.limit as number) || 5;
+      const limit = Math.max((args.limit as number) || 5, 1);
 
       const results: SearchResult[] = await context.session.searchHybrid(query, limit);
 
@@ -107,7 +108,7 @@ const getRecentCommands: InternalTool = {
   },
   execute: async (args, context): Promise<InternalToolResult> => {
     try {
-      const count = Math.min((args.count as number) || 10, 50);
+      const count = Math.min(Math.max((args.count as number) || 10, 1), 50);
 
       const entries: HistoryEntry[] = await context.history.getLastEntries(count);
 
@@ -150,18 +151,12 @@ const listProjectFiles: InternalTool = {
       limit: {
         type: 'number',
         description: 'Maximum number of files to list (default: 30, max: 100)'
-      },
-      pattern: {
-        type: 'string',
-        description: 'Optional glob pattern to filter files (e.g., "**/*.ts", "src/**/*")'
       }
     }
   },
   execute: async (args, context): Promise<InternalToolResult> => {
     try {
-      const limit = Math.min((args.limit as number) || 30, 100);
-      // Note: pattern filtering would require modifying FileContext.listFiles()
-      // For now, we just use the limit
+      const limit = Math.min(Math.max((args.limit as number) || 30, 1), 100);
 
       const files = await context.files.listFiles(limit);
 
@@ -228,7 +223,18 @@ const readFileContent: InternalTool = {
   execute: async (args, context): Promise<InternalToolResult> => {
     try {
       const filePath = args.path as string;
-      const maxLines = Math.min((args.max_lines as number) || 100, 500);
+      const maxLines = Math.min(Math.max((args.max_lines as number) || 100, 1), 500);
+
+      // Prevent path traversal attacks
+      const cwd = process.cwd();
+      const resolvedPath = path.resolve(cwd, filePath);
+      if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
+        return {
+          success: false,
+          content: '',
+          error: `Access denied: path must be within the current directory`
+        };
+      }
 
       const content = await context.files.getFileContent(filePath, maxLines);
 
