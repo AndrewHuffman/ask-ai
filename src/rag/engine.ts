@@ -89,14 +89,23 @@ export class RagEngine {
    */
   private fetchManPage(command: string): string | null {
     try {
-      const man = spawnSync('sh', ['-c', `man ${command} 2>/dev/null | col -b`], { 
+      // Run man with command as argument (not interpolated into shell string)
+      const man = spawnSync('man', [command], { 
         encoding: 'utf8', 
         timeout: 5000,
         stdio: ['pipe', 'pipe', 'pipe']
       });
       if (man.status === 0 && man.stdout) {
+        // Strip formatting using col -b
+        const col = spawnSync('col', ['-b'], {
+          encoding: 'utf8',
+          input: man.stdout,
+          timeout: 1000,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        const output = col.status === 0 ? col.stdout : man.stdout;
         // Extract just the NAME and SYNOPSIS/DESCRIPTION sections
-        const lines = man.stdout.split('\n');
+        const lines = output.split('\n');
         const result: string[] = [];
         let inSection = false;
         let sectionCount = 0;
